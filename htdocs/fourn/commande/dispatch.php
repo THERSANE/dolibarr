@@ -1158,14 +1158,14 @@ if ($id > 0 || !empty($ref)) {
 	$sql .= " e.rowid as warehouse_id, e.ref as entrepot,";
 	$sql .= " cfd.rowid as dispatchlineid, cfd.fk_product, cfd.qty, cfd.eatby, cfd.sellby, cfd.batch, cfd.comment, cfd.status, cfd.datec";
 	$sql .= " ,cd.rowid, cd.subprice";
-	if ($conf->reception->enabled) {
+	if (isModEnabled('reception')) {
 		$sql .= " ,cfd.fk_reception, r.date_delivery";
 	}
 	$sql .= " FROM ".MAIN_DB_PREFIX."product as p,";
 	$sql .= " ".MAIN_DB_PREFIX."commande_fournisseur_dispatch as cfd";
 	$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."commande_fournisseurdet as cd ON cd.rowid = cfd.fk_commandefourndet";
 	$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."entrepot as e ON cfd.fk_entrepot = e.rowid";
-	if ($conf->reception->enabled) {
+	if (isModEnabled('reception')) {
 		$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."reception as r ON cfd.fk_reception = r.rowid";
 	}
 	$sql .= " WHERE cfd.fk_commande = ".((int) $object->id);
@@ -1187,7 +1187,7 @@ if ($id > 0 || !empty($ref)) {
 
 			print '<tr class="liste_titre">';
 			// Reception ref
-			if ($conf->reception->enabled) {
+			if (isModEnabled('reception')) {
 				print '<td>'.$langs->trans("Reception").'</td>';
 			}
 			// Product
@@ -1261,7 +1261,9 @@ if ($id > 0 || !empty($ref)) {
 				print '<td class="center">'.dol_print_date($db->jdate($objp->datec), 'day').'</td>';
 
 				// Date delivery
-				print '<td class="center">'.dol_print_date($db->jdate($objp->date_delivery), 'day').'</td>';
+				if (isModEnabled('reception')) {
+					print '<td class="center">' . dol_print_date($db->jdate($objp->date_delivery), 'day') . '</td>';
+				}
 
 				// Batch / Eat by / Sell by
 				if (isModEnabled('productbatch')) {

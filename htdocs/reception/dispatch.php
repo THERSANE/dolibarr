@@ -591,9 +591,9 @@ if ($id > 0 || !empty($ref)) {
 			$conf->cache['product'] = array();
 
 			// Loop on each source order line (may be more or less than current number of lines in llx_commande_fournisseurdet)
+			$numline = 0;
 			while ($i < $num) {
 				$objp = $db->fetch_object($resql);
-
 				// On n'affiche pas les produits libres
 				if (!$objp->fk_product > 0) {
 					$nbfreeproduct++;
