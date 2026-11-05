@@ -397,6 +397,33 @@ if (empty($reshook)) {
 		}
 	}
 
+	// SPE THERSANE
+	// Ref supplier of the form: a provisional ref (prefix A-SAISIR-, the default) gives a unique ref to each invoice,
+	// a typed ref is the number of one invoice of one supplier (unique key uk_facture_fourn_ref_supplier),
+	// so the selection must then give a single invoice
+	$createbills_ref_supplier_prov = 'A-SAISIR-';
+	if ($massaction == 'confirm_createsupplierbills') {
+		$langs->load('thersane@thersane');
+		$createbills_ref_supplier = trim(GETPOST('createbills_ref_supplier', 'alphanohtml'));
+		$createbills_ref_is_prov = (strpos($createbills_ref_supplier, $createbills_ref_supplier_prov) === 0);
+		$createbills_orders = GETPOST('toselect', 'array:int');
+		$createbills_nbsuppliers = 0;
+		if (!empty($createbills_orders)) {
+			$sql = "SELECT COUNT(DISTINCT fk_soc) as nb FROM ".MAIN_DB_PREFIX."commande_fournisseur";
+			$sql .= " WHERE rowid IN (".$db->sanitize(implode(',', $createbills_orders)).")";
+			$obj = $db->getRow($sql);
+			$createbills_nbsuppliers = $obj ? (int) $obj->nb : 0;
+		}
+		if ($createbills_ref_supplier === '') {
+			setEventMessages($langs->trans('ErrorFieldRequired', $langs->transnoentitiesnoconv('RefSupplier')), null, 'errors');
+			$massaction = 'createbills';
+		} elseif (!$createbills_ref_is_prov && ($createbills_nbsuppliers > 1 || (!GETPOSTINT('createbills_onebythird') && count($createbills_orders) > 1))) {
+			setEventMessages($langs->trans('TSCreateBillsRefSupplierOneBill'), null, 'errors');
+			$massaction = 'createbills';
+		}
+	}
+	// FIN SPE THERSANE
+
 	// Mass action to generate vendor bills
 	if ($massaction == 'confirm_createsupplierbills') {
 		$orders = GETPOST('toselect', 'array:int');
@@ -440,7 +467,7 @@ if (empty($reshook)) {
 				$objecttmp->fk_project = $cmd->fk_project;
 				$objecttmp->multicurrency_code = $cmd->multicurrency_code;
 				// SPE THERSANE
-				$objecttmp->ref_supplier = '';//!empty($cmd->ref_supplier) ? $cmd->ref_supplier : $default_ref_supplier;
+				$objecttmp->ref_supplier = $createbills_ref_is_prov ? $createbills_ref_supplier_prov.$default_ref_supplier : $createbills_ref_supplier;//!empty($cmd->ref_supplier) ? $cmd->ref_supplier : $default_ref_supplier;
 				// FIN SPE THERSANE
 				$default_ref_supplier += 1;
 
@@ -465,6 +492,10 @@ if (empty($reshook)) {
 					$nb_bills_created++;
 					$lastref = $objecttmp->ref;
 					$lastid = $objecttmp->id;
+				} else {
+					setEventMessages($cmd->ref.' : '.$objecttmp->error, $objecttmp->errors, 'errors');
+					$error++;
+					break;
 				}
 			}
 
@@ -624,7 +655,7 @@ if (empty($reshook)) {
 			$massaction = $action = 'builddoc';
 
 			foreach ($TAllFact as &$objecttmp) {
-				$objecttmp->validate($user);
+				$result = $objecttmp->validate($user);
 				if ($result <= 0) {
 					$error++;
 					setEventMessages($objecttmp->error, $objecttmp->errors, 'errors');
@@ -1369,7 +1400,7 @@ if ($resql) {
 		print $langs->trans('CreateOneBillByThird');
 		print '</td>';
 		print '<td>';
-		print $form->selectyesno('createbills_onebythird', '', 1);
+		print $form->selectyesno('createbills_onebythird', GETPOSTISSET('createbills_onebythird') ? GETPOSTINT('createbills_onebythird') : '', 1); // SPE THERSANE : posted value kept
 		print '</td>';
 		print '</tr>';
 		print '<tr>';
@@ -1380,6 +1411,16 @@ if ($resql) {
 		print $form->selectyesno('validate_invoices', 1, 1);
 		print '</td>';
 		print '</tr>';
+		// SPE THERSANE
+		print '<tr>';
+		print '<td class="fieldrequired">';
+		print $langs->trans('RefSupplier');
+		print '</td>';
+		print '<td>';
+		print '<input type="text" name="createbills_ref_supplier" class="minwidth200" value="'.dol_escape_htmltag(GETPOSTISSET('createbills_ref_supplier') ? GETPOST('createbills_ref_supplier', 'alphanohtml') : $createbills_ref_supplier_prov.dol_print_date(dol_now(), '%Y%m%d%H%M%S')).'" required>';
+		print '</td>';
+		print '</tr>';
+		// FIN SPE THERSANE
 		print '</table>';
 
 		print '<div class="center">';
